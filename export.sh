@@ -22,7 +22,14 @@ done
 [ -f "$FILE" ] || { echo "File not found: $FILE" >&2; exit 1; }
 
 # The container cannot see the host filesystem, so mount the file read-only.
-ABS_FILE="$(cd "$(dirname "$FILE")" && pwd)/$(basename "$FILE")"
+# On Windows (Git Bash) "pwd -W" gives a path Docker understands (C:/Users/...);
+# elsewhere it fails and we fall back to plain "pwd".
+ABS_DIR="$(cd "$(dirname "$FILE")" && { pwd -W 2>/dev/null || pwd; })"
+ABS_FILE="$ABS_DIR/$(basename "$FILE")"
+
+# Stop Git Bash on Windows from rewriting container paths like /input/config.xml.
+export MSYS_NO_PATHCONV=1
+
 cd "$(dirname "$0")"
 
 # Starts Redis (waiting for its healthcheck), runs the exporter once, removes the app container.
