@@ -37,31 +37,23 @@ npm test
 
 25 unit tests using Node's built-in test runner (no extra test framework). They don't need Redis or Docker: the Redis client and file reader are injected, so tests use small in-memory fakes.
 
-## Project layout
+## Screenshots
 
-```
-src/parser.js      XML text → { subdomains, cookies }      (no Redis knowledge)
-src/exporter.js    data → Redis key/value pairs, then save   (no XML knowledge)
-src/cli.js         argument parsing, wiring, -v output
-export.sh          entry point: runs everything through docker compose
-docker-compose.yml app container + Redis container
-test/              unit tests for each module
-```
+**Export with `-v`** (run through Docker Compose on Windows):
 
-## Design decisions
+<img width="1980" height="1229" alt="Screenshot 2026-10-22 192745" src="https://github.com/user-attachments/assets/314c56a8-126e-4584-ba78-863979fa39aa" />
 
-- **Three small layers.** Parsing, key building and the CLI are separate so each can be tested on its own, and the key format lives in exactly one place (`exporter.js`).
-- **Atomic write.** All keys are written in one `MULTI/EXEC` transaction, so a run saves everything or nothing; Redis is never left half-updated.
-- **Validate before connecting.** The file is read and parsed before opening a Redis connection, so bad input fails fast with a clear message and touches nothing.
-- **Values kept exactly as in the file.** Values are never type-converted (`01net` stays `01net`), and case is preserved: `cookie:dlp-avg:filehippo` is `Mmm_fhp_dlp_779_ppc_m` with a capital M in the source, which looks like a typo but isn't the exporter's call to fix. The same goes for host names such as `donwloaden`.
-- **Duplicates kept.** `http://` and `https://` versions of a domain are different entries, so the subdomain list is exported as-is, in order.
-- **Strict on broken cookies.** A `<cookie>` without `name` or `host` can't produce a valid key, so the run stops with an error rather than silently skipping data.
-- **Re-runnable.** Running the export again overwrites the same keys, so it is safe to repeat.
-- **`fast-xml-parser`** was chosen because it is dependency-free, validates the XML and handles attributes, comments and single-element lists cleanly. **`redis`** is the official Node client.
-- The app container runs as the non-root `node` user, and Redis data is kept in a named volume.
+<img width="1980" height="1229" alt="Screenshot 2026-10-22 192751" src="https://github.com/user-attachments/assets/0c697c3d-3863-4484-9404-9d16079d9234" />
 
-## Possible next steps
+**Unit tests**: 25 passing:
 
-- Remove cookie keys that disappeared from the XML since the last run (e.g. keep a set of exported keys and delete the difference).
-- An integration test against a real Redis container in CI.
-- Structured logging and a `--dry-run` flag.
+<img width="1324" height="765" alt="Screenshot 2026-10-22 193049" src="https://github.com/user-attachments/assets/69756a7d-8da2-432e-b10b-fc86cfe26fb1" />
+
+**Data in Redis:**
+
+<img width="1324" height="765" alt="Screenshot 2026-10-22 193152" src="https://github.com/user-attachments/assets/96b4a7bf-152e-4624-b4db-c9043db025ee" />
+
+**Redis container running in Docker Desktop:**
+
+<img width="3840" height="2292" alt="Screenshot 2026-10-22 193404" src="https://github.com/user-attachments/assets/bb448cdc-67c1-4960-915c-c4bbbd03f60b" />
+
